@@ -1,0 +1,39 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Data
+data/models/*
+data/videos/*
+data/queue/*
+data/sessions/*
+data/logs/*
+data/backups/*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Credentials
+*credentials.json
+*secrets*
