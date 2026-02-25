@@ -56,8 +56,19 @@ class TestAccountCredentials:
         reason='Нет файлов credentials'
     )
     def test_accounts_have_required_fields(self):
-        """Каждый файл содержит обязательные поля."""
-        required = ['username', 'password', 'totp_secret']
+        """Каждый файл содержит обязательные поля.
+
+        Схема аккаунта:
+          username        — логин Instagram
+          password        — пароль
+          totp_secret     — TOTP секрет для 2FA (может быть пустым если нет 2FA)
+          model_photo_url — URL фото модели (лицо + тело, уникально для аккаунта)
+
+        ВАЖНО: каждый аккаунт = отдельная AI-модель.
+        model_photo_url — единственное что уникально между аккаунтами.
+        Одежда, фон, исходное видео — общие для всех.
+        """
+        required = ['username', 'password', 'model_photo_url']
         for f in ACCOUNTS_DIR.glob('*.json'):
             data = json.loads(f.read_text())
             for field in required:
@@ -93,6 +104,32 @@ class TestAccountCredentials:
             f"Найдены дубликаты username: "
             f"{[u for u in usernames if usernames.count(u) > 1]}"
         )
+
+    @pytest.mark.skipif(
+        not ACCOUNTS_DIR.exists() or not any(ACCOUNTS_DIR.glob('*.json')),
+        reason='Нет файлов credentials'
+    )
+    def test_each_account_has_unique_model(self):
+        """Каждый аккаунт использует уникальное фото модели.
+
+        Архитектурное правило: 1 аккаунт = 1 модель (уникальное лицо + тело).
+        Одна модель не может публиковаться в двух Instagram-аккаунтах одновременно.
+        """
+        model_photos = []
+        for f in ACCOUNTS_DIR.glob('*.json'):
+            data  = json.loads(f.read_text())
+            photo = data.get('model_photo_url', '')
+            if photo:
+                model_photos.append((photo, f.name))
+
+        urls    = [p for p, _ in model_photos]
+        dupes   = [p for p in urls if urls.count(p) > 1]
+        if dupes:
+            files = [fname for p, fname in model_photos if p in dupes]
+            pytest.fail(
+                f"Одно фото модели используется в нескольких аккаунтах: {files}. "
+                "Каждый аккаунт должен иметь уникальную модель."
+            )
 
 
 # ── Блок 2: Формат credentials ────────────────────────────────────────────────
