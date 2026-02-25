@@ -2,15 +2,20 @@
 requests>=2.32.0
 python-dotenv>=1.0.0
 
+# MoreLogin / Instagram
+pyotp>=2.9.0          # TOTP для 2FA логина в Instagram (ig-warmup.py)
+
 # Тестирование
 pytest>=9.0.0
 pytest-cov>=7.0.0
 
-# Google Drive (для google_drive_client.py)
+# Фаза 1.4: генерация подписей (нужен ключ от Сергея)
+# anthropic>=0.40.0
+
+# Фаза 1.1: Google Drive (нужны credentials от Сергея)
 # google-api-python-client>=2.100.0
 # google-auth>=2.20.0
 
-# Опционально (для будущих фаз)
+# Фаза 3+: очередь и база данных
 # redis>=5.0.0
 # psycopg2-binary>=2.9.0
-# anthropic>=0.20.0
