@@ -141,10 +141,10 @@ def warmup_account(session: dict, dry_run: bool = False) -> bool:
         phone_id = matched[0]['id']
 
     try:
-        info = client.get_or_start_phone(phone_id)
-        ip   = info.get('host', info.get('ip', '127.0.0.1'))
-        port = int(info.get('port', 5555))
-        pwd  = info.get('password', '')
+        _, adb_info = client.get_or_start_phone(phone_name)
+        ip   = adb_info.get('adbIp', '127.0.0.1')
+        port = int(adb_info.get('adbPort', 5555))
+        pwd  = adb_info.get('adbPassword', '')
 
         with AdbClient(ip, port, pwd) as adb:
             ig           = InstagramClient(adb)
@@ -165,7 +165,7 @@ def warmup_account(session: dict, dry_run: bool = False) -> bool:
 
     finally:
         try:
-            client.stop_phone(phone_id)
+            client.power_off(int(phone_id))
             logger.info(f'Телефон остановлен')
         except Exception as e:
             logger.warning(f'Не удалось остановить телефон: {e}')

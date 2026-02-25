@@ -24,6 +24,8 @@ data/queue/*
 data/sessions/*
 data/logs/*
 data/backups/*
+data/accounts/*.json
+!data/accounts/_template.json
 
 # OS
 .DS_Store
