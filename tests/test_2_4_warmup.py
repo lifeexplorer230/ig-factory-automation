@@ -19,7 +19,7 @@ load_dotenv(Path(__file__).parent.parent / '.env')
 sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
 SESSIONS_DIR = Path(__file__).parent.parent / 'data' / 'sessions'
-MIN_ACCOUNTS = 5
+MIN_ACCOUNTS = 10  # 10 моделей на старте
 
 
 # ── Блок 1: Session файлы ─────────────────────────────────────────────────────

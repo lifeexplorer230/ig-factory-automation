@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / '.env')
 
 ACCOUNTS_DIR = Path(__file__).parent.parent / 'data' / 'accounts'
-MIN_ACCOUNTS  = 5
+MIN_ACCOUNTS  = 10  # 10 моделей на старте
 
 
 # ── Блок 1: Файлы credentials ─────────────────────────────────────────────────
