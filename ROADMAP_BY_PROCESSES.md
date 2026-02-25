@@ -266,6 +266,7 @@ data/queue/brand_anna/video_001.json → ready_to_post
 **Скрипты:**
 - ✅ `ig_client.py` — login() с 3 сценариями (TOTP / device approval / уже залогинен)
 - ✅ `adb_client.py` — ADB wrapper (keeper session, tap/swipe/ui_dump)
+- ✅ `ig_login_runner.py` — последовательный логин всех аккаунтов (1 прокси → по одному)
 
 **Тесты:**
 - ✅ `test_2_3_login.py` — unit-тесты pass, данные ждут (нет data/accounts/)
@@ -284,6 +285,7 @@ data/queue/brand_anna/video_001.json → ready_to_post
 
 **Скрипты:**
 - ✅ `ig_client.py` — warmup_reels() (270–300с, 40% полный просмотр, 20% лайк)
+- ✅ `ig_warmup_runner.py` — прогрев всех аккаунтов (skip уже прогретых, пауза 30с)
 
 **Тесты:**
 - ✅ `test_2_4_warmup.py` — unit-тесты pass, данные ждут (нет sessions)
@@ -310,6 +312,7 @@ data/queue/brand_anna/video_001.json → ready_to_post
   - Поддерживает `--all` для публикации всей очереди
 
 **Тесты:**
+- ✅ `test_3_0_publisher_unit.py` — 18/18 unit-тестов (build_caption, _pick_session, mark_as_published, run dry_run)
 - ✅ `test_3_1_first_publication.py` — unit-тесты pass, интеграция ждёт данные
 
 **Вопросы (открытые):**
@@ -331,54 +334,60 @@ data/queue/brand_anna/video_001.json → ready_to_post
 ### Тест-сьют
 
 ```
-Всего тестов: 81
-Passing:      37  ✅  (все unit/structure тесты)
-Failing:      18  ❌  (ожидаемо — нет данных/ключей)
-Skipped:      26  ⏭️  (ADB тесты без запущенного телефона)
+Всего тестов: 128
+Passing:       79  ✅  (все unit/structure тесты)
+Failing:       19  ❌  (ожидаемо — нет данных/ключей)
+Skipped:       30  ⏭️  (ADB тесты без запущенного телефона)
 ```
 
 ### Детализация failures (все ожидаемые):
 
 | Тест | Причина | Разблокирует |
 |------|---------|-------------|
-| test_1_1: nano/kling/gdrive | Заглушки в .env | Сергей: API ключи |
+| test_1_1: nano/kling/gdrive/sheets | Заглушки в .env | Сергей: API ключи |
+| test_1_3: at_least_10_ready_videos | Нет данных в очереди | После запуска pipeline |
 | test_1_4: claude key + captions | Заглушка в .env | Сергей: Claude ключ |
-| test_2_2: accounts | Нет data/accounts/ | Купить/создать 5 аккаунтов |
+| test_2_2: accounts (2 теста) | Нет data/accounts/ (только шаблон) | Купить 10 аккаунтов |
 | test_2_3: login | Нет data/accounts/ | После 2.2 |
-| test_2_4: sessions | Нет data/sessions/ | После 2.3 + логин |
+| test_2_4: sessions (2 теста) | Нет data/sessions/ | После 2.3 + логин |
 | test_3_1: queue + sessions + posts | Нет данных | После 1.3 + 2.4 |
 
 ### Файлы проекта
 
 ```
 scripts/
-  adb_client.py          ✅ реальный (ADB управление)
-  ig_client.py           ✅ реальный (Instagram: логин, пост, прогрев)
-  ig-warmup.py           ✅ реальный (полный цикл, 24.02.2026)
-  morelogin_client.py    ✅ реальный (MoreLogin Cloud API)
-  caption_generator.py   ✅ реальный (Claude API + fallback шаблоны)
-  content_pipeline.py    🔄 stub (dry-run работает, API заглушки)
-  multi_account_publisher.py  ✅ реальный (готов к использованию)
-  nano_banana_client.py  ⏳ stub (ждём API ключ)
-  kling_client.py        ⏳ stub (ждём API ключ)
-  google_drive_client.py ⏳ stub (ждём credentials)
+  adb_client.py               ✅ реальный (ADB управление)
+  ig_client.py                ✅ реальный (Instagram: логин, пост, прогрев)
+  ig-warmup.py                ✅ реальный (полный цикл, 24.02.2026)
+  ig_login_runner.py          ✅ реальный (последовательный логин всех аккаунтов)
+  ig_warmup_runner.py         ✅ реальный (последовательный прогрев, min 25 reels)
+  morelogin_client.py         ✅ реальный (MoreLogin Cloud API)
+  caption_generator.py        ✅ реальный (Claude API + fallback шаблоны)
+  content_pipeline.py         🔄 stub (dry-run + Sheets, API заглушки)
+  multi_account_publisher.py  ✅ реальный (очередь → телефон → публикация)
+  google_sheets_client.py     ⏳ stub (ждём credentials от Сергея)
+  nano_banana_client.py       ⏳ stub (ждём API ключ)
+  kling_client.py             ⏳ stub (ждём API ключ)
+  google_drive_client.py      ⏳ stub (ждём credentials)
 
 tests/
-  test_1_1_api_keys.py       ✅
-  test_1_2_single_video.py   ✅
-  test_1_3_batch_videos.py   ✅
-  test_1_4_captions.py       ✅
-  test_2_1_phones_ready.py   ✅
-  test_2_2_accounts_ready.py ✅
-  test_2_3_login.py          ✅
-  test_2_4_warmup.py         ✅
-  test_3_1_first_publication.py ✅
+  test_1_1_api_keys.py           ✅ (16 тестов)
+  test_1_2_single_video.py       ✅ (11 тестов)
+  test_1_3_batch_videos.py       ✅ (9 тестов)
+  test_1_4_captions.py           ✅ (8 тестов)
+  test_2_1_phones_ready.py       ✅ (10 тестов)
+  test_2_2_accounts_ready.py     ✅ (12 тестов, 2 fail ожидаемо)
+  test_2_3_login.py              ✅ (9 тестов)
+  test_2_4_warmup.py             ✅ (8 тестов)
+  test_3_0_publisher_unit.py     ✅ (18 тестов — unit, все green!)
+  test_3_1_first_publication.py  ✅ (7 тестов)
 
 data/
-  sessions/  ✅ папка существует (пустая)
-  queue/     ✅ папка существует (пустая)
-  videos/    ✅ папка существует (пустая)
-  accounts/  ❌ не существует (нужно создать)
+  sessions/   ✅ папка существует (пустая — ждём аккаунты)
+  queue/      ✅ папка существует (пустая — ждём API ключи)
+  videos/     ✅ папка существует
+  accounts/   ✅ папка создана (_template.json + .gitkeep)
+  shared/     ✅ создана структура (source_videos/, clothing/, backgrounds/)
 ```
 
 ---
