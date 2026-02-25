@@ -37,6 +37,20 @@ class TestPhase11APIKeys:
         assert not creds_path.startswith('/path/to/'), \
             "GOOGLE_DRIVE_CREDENTIALS содержит заглушку — укажи реальный путь"
 
+    def test_google_sheets_id_configured(self):
+        """Google Sheets ID таблицы заданий установлен.
+
+        Таблица заданий — основной интерфейс между оператором и пайплайном.
+        Оператор добавляет строки: аккаунт + одежда (Drive ID) + видео (Drive ID).
+        content_pipeline.py читает pending-строки и генерирует видео.
+        """
+        sheets_id = os.getenv('GOOGLE_SHEETS_ID', '')
+        assert sheets_id, "GOOGLE_SHEETS_ID не установлен в .env"
+        assert sheets_id != '...', (
+            "GOOGLE_SHEETS_ID содержит заглушку — "
+            "укажи реальный ID из URL таблицы: /spreadsheets/d/<ID>/"
+        )
+
     def test_morelogin_credentials_exist(self):
         """MoreLogin credentials установлены"""
         assert os.getenv('MORELOGIN_API_KEY', ''), "MORELOGIN_API_KEY не установлен"
@@ -72,6 +86,15 @@ class TestPhase11ClientInit:
         creds = os.getenv('GOOGLE_DRIVE_CREDENTIALS', '/tmp/fake_credentials.json')
         client = GoogleDriveClient(credentials_path=creds)
         assert client.credentials_path == creds, "GoogleDriveClient не сохранил credentials_path"
+
+    def test_google_sheets_client_init(self):
+        """Google Sheets клиент инициализируется"""
+        from google_sheets_client import GoogleSheetsClient
+        creds    = os.getenv('GOOGLE_DRIVE_CREDENTIALS', '/tmp/fake_creds.json')
+        sheet_id = os.getenv('GOOGLE_SHEETS_ID', 'test_sheet_id')
+        client   = GoogleSheetsClient(credentials_path=creds, spreadsheet_id=sheet_id)
+        assert client.credentials_path == creds,    "GoogleSheetsClient не сохранил credentials_path"
+        assert client.spreadsheet_id   == sheet_id, "GoogleSheetsClient не сохранил spreadsheet_id"
 
     def test_morelogin_client_init(self):
         """MoreLogin клиент инициализируется"""
