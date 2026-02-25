@@ -1,0 +1,16 @@
+# Основные зависимости
+requests>=2.32.0
+python-dotenv>=1.0.0
+
+# Тестирование
+pytest>=9.0.0
+pytest-cov>=7.0.0
+
+# Google Drive (для google_drive_client.py)
+# google-api-python-client>=2.100.0
+# google-auth>=2.20.0
+
+# Опционально (для будущих фаз)
+# redis>=5.0.0
+# psycopg2-binary>=2.9.0
+# anthropic>=0.20.0
