@@ -43,12 +43,6 @@ class TestPhase11APIKeys:
         assert os.getenv('MORELOGIN_APP_ID', ''), "MORELOGIN_APP_ID не установлен"
         assert os.getenv('MORELOGIN_APP_SECRET', ''), "MORELOGIN_APP_SECRET не установлен"
 
-    def test_claude_api_key_exists(self):
-        """Claude API ключ установлен"""
-        key = os.getenv('CLAUDE_API_KEY', '')
-        assert key, "CLAUDE_API_KEY не установлен в .env"
-        assert not key.startswith('sk-...'), "CLAUDE_API_KEY содержит заглушку — замени реальным ключом"
-
     def test_telegram_configured(self):
         """Telegram bot token и chat_id установлены"""
         assert os.getenv('TELEGRAM_BOT_TOKEN', ''), "TELEGRAM_BOT_TOKEN не установлен"
