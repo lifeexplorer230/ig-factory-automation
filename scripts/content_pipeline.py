@@ -48,7 +48,9 @@ def queue_status() -> dict:
 
     counts: dict[str, int] = {}
     for f in QUEUE_DIR.glob('*.json'):
-        data   = json.loads(f.read_text())
+        data = json.loads(f.read_text())
+        if not isinstance(data, dict):
+            continue  # пропускаем не-queue файлы (списки и т.п.)
         status = data.get('status', 'unknown')
         counts[status] = counts.get(status, 0) + 1
 
@@ -282,15 +284,157 @@ def process_batch(products_file: str, dry_run: bool = False) -> int:
     return success
 
 
+# ── Google Sheets: задания от оператора ──────────────────────────────────────
+
+def process_task(task: dict, dry_run: bool = False) -> dict:
+    """
+    Обработать одно задание из Google Sheets.
+
+    Структура задания:
+        account              — username аккаунта (например brand_anna)
+        clothing_drive_id    — Google Drive ID файла одежды
+        source_video_drive_id — Google Drive ID исходного видео (движение + аудио)
+        row_index            — номер строки в Sheets (для обновления статуса)
+
+    Поток:
+        1. Скачиваем clothing и source_video из Google Drive
+        2. Берём model_photo_url из data/accounts/<account>.json
+        3. Nano Banana: model_photo + clothing → сгенерированное фото
+        4. Kling AI: сгенерированное фото + source_video → видео
+        5. Claude: подпись
+        6. Сохраняем в data/queue/<account>/
+
+    Returns:
+        dict с метаданными видео (video_id, video_url, captions, ...)
+    """
+    account    = task.get('account', '')
+    clothing   = task.get('clothing_drive_id', '')
+    src_video  = task.get('source_video_drive_id', '')
+
+    logger.info(f"Задание: аккаунт={account}, одежда={clothing[:8]}..., видео={src_video[:8]}...")
+
+    if dry_run:
+        video_id = str(uuid.uuid4())[:8]
+        mention  = os.getenv('BRAND_MENTION', '@brand')
+        return {
+            'video_id':             video_id,
+            'video_url':            f'https://example.com/videos/{video_id}.mp4',
+            'account':              account,
+            'clothing_drive_id':    clothing,
+            'source_video_drive_id': src_video,
+            'captions': [
+                f"Style that speaks for itself ✨ {mention} #fashion #womensfashion #ootd",
+                f"Effortless elegance 🖤 {mention} #fashionista #lookbook #styleinspo",
+            ],
+            'hashtags': ['#fashion', '#style', '#ootd'],
+            'mention':  mention,
+            'status':   'ready_to_post',
+            'dry_run':  True,
+        }
+
+    # Загрузить model_photo_url из аккаунта
+    accounts_dir = BASE_DIR / 'data' / 'accounts'
+    account_file = accounts_dir / f'{account}.json'
+    if not account_file.exists():
+        raise RuntimeError(
+            f'Файл аккаунта не найден: {account_file}. '
+            f'Создай data/accounts/{account}.json с полем model_photo_url.'
+        )
+    account_data    = json.loads(account_file.read_text())
+    model_photo_url = account_data.get('model_photo_url', '')
+    if not model_photo_url:
+        raise RuntimeError(f'model_photo_url пустой в {account_file}')
+
+    from google_drive_client import GoogleDriveClient
+    drive = GoogleDriveClient()
+
+    # Скачать одежду и исходное видео из Drive
+    clothing_path   = VIDEOS_DIR / f'clothing_{clothing[:8]}.jpg'
+    src_video_path  = VIDEOS_DIR / f'srcvideo_{src_video[:8]}.mp4'
+    VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
+
+    logger.info("Drive: скачиваем одежду...")
+    drive.download_file(clothing, str(clothing_path))
+
+    logger.info("Drive: скачиваем исходное видео...")
+    drive.download_file(src_video, str(src_video_path))
+
+    # Генерация через Nano Banana + Kling + Claude
+    video_data = process_product(
+        product_name        = account,
+        product_description = '',
+        model_photo_url     = model_photo_url,
+        clothing_photo_url  = str(clothing_path),
+        source_video_url    = str(src_video_path),
+    )
+    video_data['account']               = account
+    video_data['clothing_drive_id']     = clothing
+    video_data['source_video_drive_id'] = src_video
+    return video_data
+
+
+def run_from_sheets(dry_run: bool = False) -> int:
+    """
+    Читать pending-задания из Google Sheets и генерировать видео.
+
+    Оператор добавляет строки в таблицу:
+        account | clothing_drive_id | source_video_drive_id | status=pending
+
+    Этот метод:
+        1. Читает все pending строки
+        2. Обрабатывает каждую через process_task()
+        3. Обновляет статус строки в Sheets (done / error)
+        4. Сохраняет видео в data/queue/<account>/
+
+    Returns:
+        Количество успешно обработанных заданий
+    """
+    from google_sheets_client import GoogleSheetsClient
+    sheets  = GoogleSheetsClient()
+    tasks   = sheets.get_pending_tasks()
+
+    if not tasks:
+        logger.info("Нет новых заданий в Google Sheets")
+        return 0
+
+    logger.info(f"Заданий из Sheets: {len(tasks)}")
+    success = 0
+
+    for i, task in enumerate(tasks, 1):
+        account = task.get('account', '?')
+        logger.info(f"[{i}/{len(tasks)}] Аккаунт: {account}")
+        try:
+            sheets.update_task_status(task['row_index'], 'processing')
+            video_data = process_task(task, dry_run=dry_run)
+            save_to_queue(video_data)
+            sheets.update_task_status(
+                task['row_index'], 'done',
+                video_id=video_data.get('video_id', '')
+            )
+            success += 1
+            logger.info(f"✓ {account}: видео {video_data['video_id']} в очереди")
+        except Exception as e:
+            logger.error(f"✗ {account}: {e}")
+            try:
+                sheets.update_task_status(task['row_index'], 'error', error=str(e))
+            except Exception:
+                pass
+
+    logger.info(f"Sheets: {success}/{len(tasks)} заданий выполнено")
+    return success
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Поток 1: генерация видео для Instagram'
     )
-    parser.add_argument('--product',     help='Название товара')
+    parser.add_argument('--product',     help='Название товара (для теста без Sheets)')
     parser.add_argument('--description', default='', help='Описание товара')
-    parser.add_argument('--batch',       help='JSON-файл со списком товаров')
+    parser.add_argument('--batch',       help='JSON-файл со списком товаров (для теста)')
+    parser.add_argument('--sheets',      action='store_true',
+                        help='Читать задания из Google Sheets (основной режим)')
     parser.add_argument('--status',      action='store_true', help='Показать статус очереди')
     parser.add_argument('--dry-run',     dest='dry_run', action='store_true',
                         help='Без реальных API-вызовов')

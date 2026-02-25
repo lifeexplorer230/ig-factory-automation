@@ -19,6 +19,14 @@ ACCOUNTS_DIR = Path(__file__).parent.parent / 'data' / 'accounts'
 MIN_ACCOUNTS  = 10  # 10 моделей на старте
 
 
+def _account_files() -> list[Path]:
+    """Файлы credentials (без шаблонов, начинающихся с _)."""
+    if not ACCOUNTS_DIR.exists():
+        return []
+    return [f for f in sorted(ACCOUNTS_DIR.glob('*.json'))
+            if not f.name.startswith('_')]
+
+
 # ── Блок 1: Файлы credentials ─────────────────────────────────────────────────
 
 class TestAccountCredentials:
@@ -35,24 +43,24 @@ class TestAccountCredentials:
         """Есть хотя бы один файл с credentials."""
         if not ACCOUNTS_DIR.exists():
             pytest.fail(f"Папка {ACCOUNTS_DIR} не существует")
-        files = list(ACCOUNTS_DIR.glob('*.json'))
+        files = _account_files()
         assert len(files) >= 1, (
-            f"В {ACCOUNTS_DIR} нет файлов. "
-            "Добавь JSON с credentials: username, password, totp_secret."
+            f"В {ACCOUNTS_DIR} нет файлов (кроме шаблонов). "
+            "Добавь JSON с credentials: username, password, model_photo_url."
         )
 
     def test_minimum_5_accounts(self):
-        """Минимум 5 аккаунтов (критерий Фазы 2.2)."""
+        """Минимум 10 аккаунтов (критерий Фазы 2.2)."""
         if not ACCOUNTS_DIR.exists():
             pytest.fail(f"Папка {ACCOUNTS_DIR} не существует")
-        files = list(ACCOUNTS_DIR.glob('*.json'))
+        files = _account_files()
         assert len(files) >= MIN_ACCOUNTS, (
             f"Найдено {len(files)} аккаунтов, нужно >= {MIN_ACCOUNTS}. "
             "Купи аккаунты и добавь их credentials."
         )
 
     @pytest.mark.skipif(
-        not ACCOUNTS_DIR.exists() or not any(ACCOUNTS_DIR.glob('*.json')),
+        not ACCOUNTS_DIR.exists() or not _account_files(),
         reason='Нет файлов credentials'
     )
     def test_accounts_have_required_fields(self):
@@ -69,7 +77,7 @@ class TestAccountCredentials:
         Одежда, фон, исходное видео — общие для всех.
         """
         required = ['username', 'password', 'model_photo_url']
-        for f in ACCOUNTS_DIR.glob('*.json'):
+        for f in _account_files():
             data = json.loads(f.read_text())
             for field in required:
                 assert field in data, (
@@ -77,25 +85,25 @@ class TestAccountCredentials:
                 )
 
     @pytest.mark.skipif(
-        not ACCOUNTS_DIR.exists() or not any(ACCOUNTS_DIR.glob('*.json')),
+        not ACCOUNTS_DIR.exists() or not _account_files(),
         reason='Нет файлов credentials'
     )
     def test_no_empty_credentials(self):
         """Credentials не пустые."""
-        for f in ACCOUNTS_DIR.glob('*.json'):
+        for f in _account_files():
             data = json.loads(f.read_text())
             assert data.get('username'), f"username пустой в {f.name}"
             assert data.get('password'), f"password пустой в {f.name}"
             # totp_secret опциональный — не у всех аккаунтов есть 2FA
 
     @pytest.mark.skipif(
-        not ACCOUNTS_DIR.exists() or not any(ACCOUNTS_DIR.glob('*.json')),
+        not ACCOUNTS_DIR.exists() or not _account_files(),
         reason='Нет файлов credentials'
     )
     def test_no_duplicate_usernames(self):
         """Нет дубликатов username."""
         usernames = []
-        for f in ACCOUNTS_DIR.glob('*.json'):
+        for f in _account_files():
             data = json.loads(f.read_text())
             u = data.get('username', '')
             if u:
@@ -106,7 +114,7 @@ class TestAccountCredentials:
         )
 
     @pytest.mark.skipif(
-        not ACCOUNTS_DIR.exists() or not any(ACCOUNTS_DIR.glob('*.json')),
+        not ACCOUNTS_DIR.exists() or not _account_files(),
         reason='Нет файлов credentials'
     )
     def test_each_account_has_unique_model(self):
@@ -116,7 +124,7 @@ class TestAccountCredentials:
         Одна модель не может публиковаться в двух Instagram-аккаунтах одновременно.
         """
         model_photos = []
-        for f in ACCOUNTS_DIR.glob('*.json'):
+        for f in _account_files():
             data  = json.loads(f.read_text())
             photo = data.get('model_photo_url', '')
             if photo:
@@ -138,12 +146,12 @@ class TestCredentialsFormat:
     """Credentials в правильном формате."""
 
     @pytest.mark.skipif(
-        not ACCOUNTS_DIR.exists() or not any(ACCOUNTS_DIR.glob('*.json')),
+        not ACCOUNTS_DIR.exists() or not _account_files(),
         reason='Нет файлов credentials'
     )
     def test_username_format(self):
         """Username в правильном формате (lowercase, без @)."""
-        for f in ACCOUNTS_DIR.glob('*.json'):
+        for f in _account_files():
             data = json.loads(f.read_text())
             u = data.get('username', '')
             if not u:
@@ -157,13 +165,13 @@ class TestCredentialsFormat:
             )
 
     @pytest.mark.skipif(
-        not ACCOUNTS_DIR.exists() or not any(ACCOUNTS_DIR.glob('*.json')),
+        not ACCOUNTS_DIR.exists() or not _account_files(),
         reason='Нет файлов credentials'
     )
     def test_totp_secret_format(self):
         """TOTP secret — base32-строка (если задан)."""
         import base64
-        for f in ACCOUNTS_DIR.glob('*.json'):
+        for f in _account_files():
             data  = json.loads(f.read_text())
             totp  = data.get('totp_secret', '')
             if not totp:
@@ -186,7 +194,7 @@ class TestAccountsMatchSessions:
     SESSIONS_DIR = Path(__file__).parent.parent / 'data' / 'sessions'
 
     @pytest.mark.skipif(
-        not ACCOUNTS_DIR.exists() or not any(ACCOUNTS_DIR.glob('*.json')),
+        not ACCOUNTS_DIR.exists() or not _account_files(),
         reason='Нет файлов credentials'
     )
     def test_session_usernames_match_credentials(self):
@@ -195,7 +203,7 @@ class TestAccountsMatchSessions:
             pytest.skip("Сессий ещё нет — это нормально на Фазе 2.2")
 
         account_usernames = set()
-        for f in ACCOUNTS_DIR.glob('*.json'):
+        for f in _account_files():
             data = json.loads(f.read_text())
             u = data.get('username', '')
             if u:

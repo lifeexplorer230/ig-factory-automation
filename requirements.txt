@@ -9,12 +9,14 @@ pyotp>=2.9.0          # TOTP для 2FA логина в Instagram (ig-warmup.py)
 pytest>=9.0.0
 pytest-cov>=7.0.0
 
-# Фаза 1.4: генерация подписей (нужен ключ от Сергея)
-# anthropic>=0.40.0
+# Генерация подписей через Claude (нужен ключ от Сергея)
+anthropic>=0.40.0
 
-# Фаза 1.1: Google Drive (нужны credentials от Сергея)
-# google-api-python-client>=2.100.0
-# google-auth>=2.20.0
+# Google Sheets / Google Drive (нужны credentials от Сергея)
+google-api-python-client>=2.100.0
+google-auth>=2.20.0
+google-auth-httplib2>=0.2.0
+gspread>=6.0.0
 
 # Фаза 3+: очередь и база данных
 # redis>=5.0.0

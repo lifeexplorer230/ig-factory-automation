@@ -1,0 +1,16 @@
+{
+  "_comment": "Шаблон аккаунта. Скопируй файл как <username>.json и заполни поля.",
+  "_required_fields": ["username", "password", "model_photo_url"],
+  "_optional_fields": ["totp_secret", "phone_name", "phone_id", "notes"],
+
+  "username": "brand_anna",
+  "password": "REPLACE_ME",
+  "totp_secret": null,
+
+  "model_photo_url": "https://drive.google.com/file/d/REPLACE_ME",
+
+  "phone_name": "CP-1",
+  "phone_id": null,
+
+  "notes": "Модель: Anna. Стиль: street fashion. Нишевой аккаунт streetwear."
+}

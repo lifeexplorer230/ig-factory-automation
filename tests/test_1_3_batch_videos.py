@@ -78,6 +78,8 @@ class TestBatchPipelineUnit:
         video_ids = []
         for f in tmp_path.glob('*.json'):
             d = json.loads(f.read_text())
+            if not isinstance(d, dict) or 'video_id' not in d:
+                continue  # пропускаем входные файлы (списки)
             video_ids.append(d.get('video_id'))
 
         assert len(video_ids) == len(set(video_ids)), (
@@ -99,6 +101,8 @@ class TestBatchPipelineUnit:
         required = ['video_id', 'video_url', 'captions', 'hashtags', 'mention', 'status']
         for f in tmp_path.glob('*.json'):
             d = json.loads(f.read_text())
+            if not isinstance(d, dict) or 'video_id' not in d:
+                continue  # пропускаем входные файлы (списки)
             for field in required:
                 assert field in d, f"Поле '{field}' отсутствует в {f.name}"
 
